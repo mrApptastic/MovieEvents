@@ -1,0 +1,299 @@
+@page "/events"
+
+<PageTitle>Events - MovieEvents</PageTitle>
+
+<h1><i class="bi bi-calendar-event"></i> Events</h1>
+
+<button class="btn btn-primary mt-3" @onclick="() => _showCreateForm = !_showCreateForm">
+    <i class="bi bi-plus-circle"></i> Create Event
+</button>
+
+@if (_showCreateForm && _state is not null)
+{
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5 class="mb-0">New Event</h5>
+        </div>
+        <div class="card-body">
+            @if (_state.Club.FavouriteMovies.Count == 0 || _state.Club.Locations.Count == 0)
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    You need at least one favourite movie and one location to create an event.
+                </div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Movie</label>
+                        <select class="form-select" @bind="_selectedMovieId">
+                            <option value="0">Select a movie...</option>
+                            @foreach (var movie in _state.Club.FavouriteMovies)
+                            {
+                                <option value="@movie.Id">@movie.Title</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Location</label>
+                        <select class="form-select" @bind="_selectedLocationId">
+                            <option value="">Select a location...</option>
+                            @foreach (var location in _state.Club.Locations)
+                            {
+                                <option value="@location.Id">@location.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Date &amp; Time</label>
+                        <input type="datetime-local" class="form-control" @bind="_eventDateTime" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" placeholder="Optional notes" @bind="_eventNotes" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Invite Friends</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var friend in _state.Club.Friends)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="@($"friend-{friend.Id}")"
+                                           checked="@_selectedFriendIds.Contains(friend.Id)"
+                                           @onchange="(e) => ToggleFriend(friend.Id, e)" />
+                                    <label class="form-check-label" for="@($"friend-{friend.Id}")">
+                                        @friend.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Invite Groups</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var group in _state.Club.Groups)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="@($"group-{group.Id}")"
+                                           checked="@_selectedGroupIds.Contains(group.Id)"
+                                           @onchange="(e) => ToggleGroup(group.Id, e)" />
+                                    <label class="form-check-label" for="@($"group-{group.Id}")">
+                                        @group.Name (@group.FriendIds.Count members)
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-success" @onclick="CreateEvent" disabled="@_isCreating">
+                            @if (_isCreating)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            }
+                            <i class="bi bi-check-circle"></i> Create Event
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3 alert-dismissible fade show">
+        @_message
+        <button type="button" class="btn-close" @onclick="() => _message = null"></button>
+    </div>
+}
+
+@if (_state is not null)
+{
+    var scheduledEvents = _state.Club.Events
+        .Where(e => e.Status == EventStatus.Scheduled)
+        .OrderBy(e => e.EventDate)
+        .ToList();
+
+    var cancelledEvents = _state.Club.Events
+        .Where(e => e.Status == EventStatus.Cancelled)
+        .OrderByDescending(e => e.UpdatedAt)
+        .ToList();
+
+    @if (scheduledEvents.Count > 0)
+    {
+        <h3 class="mt-4"><i class="bi bi-calendar-check text-success"></i> Scheduled Events</h3>
+        <div class="row g-3 mt-1">
+            @foreach (var evt in scheduledEvents)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">@evt.Movie.Title</h5>
+                            <p class="card-text">
+                                <i class="bi bi-calendar"></i> @evt.EventDate.ToString("MMM dd, yyyy HH:mm")<br />
+                                <i class="bi bi-geo-alt"></i> @evt.Location.Name<br />
+                                <i class="bi bi-people"></i> @evt.InvitedFriendIds.Count invited
+                                @if (!string.IsNullOrEmpty(evt.Notes))
+                                {
+                                    <br /><i class="bi bi-sticky"></i> @evt.Notes
+                                }
+                            </p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => CancelEvent(evt.Id)">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (cancelledEvents.Count > 0)
+    {
+        <h3 class="mt-4"><i class="bi bi-x-circle text-danger"></i> Cancelled Events</h3>
+        <div class="row g-3 mt-1">
+            @foreach (var evt in cancelledEvents)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-danger">
+                        <div class="card-body text-muted">
+                            <h5 class="card-title">@evt.Movie.Title</h5>
+                            <p class="card-text">
+                                <i class="bi bi-calendar"></i> @evt.EventDate.ToString("MMM dd, yyyy HH:mm")<br />
+                                <i class="bi bi-geo-alt"></i> @evt.Location.Name
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_state.Club.Events.Count == 0)
+    {
+        <p class="text-muted mt-3">No events yet. Create one above!</p>
+    }
+}
+
+@code {
+    [Inject] private IAppStateService AppStateService { get; set; } = default!;
+    [Inject] private IMovieEventService MovieEventService { get; set; } = default!;
+
+    private AppState? _state;
+    private bool _showCreateForm;
+    private int _selectedMovieId;
+    private string _selectedLocationId = "";
+    private DateTime _eventDateTime = DateTime.Now.AddDays(1);
+    private string _eventNotes = "";
+    private HashSet<Guid> _selectedFriendIds = [];
+    private HashSet<Guid> _selectedGroupIds = [];
+    private bool _isCreating;
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state = await AppStateService.GetStateAsync(CancellationToken.None);
+    }
+
+    private void ToggleFriend(Guid friendId, ChangeEventArgs e)
+    {
+        if (e.Value is true or "true" or "True")
+            _selectedFriendIds.Add(friendId);
+        else
+            _selectedFriendIds.Remove(friendId);
+    }
+
+    private void ToggleGroup(Guid groupId, ChangeEventArgs e)
+    {
+        if (e.Value is true or "true" or "True")
+            _selectedGroupIds.Add(groupId);
+        else
+            _selectedGroupIds.Remove(groupId);
+    }
+
+    private async Task CreateEvent()
+    {
+        if (_state is null || _selectedMovieId == 0 || string.IsNullOrEmpty(_selectedLocationId))
+        {
+            _message = "Please select a movie and a location.";
+            _isError = true;
+            return;
+        }
+
+        if (!Guid.TryParse(_selectedLocationId, out var locationId))
+            return;
+
+        var movie = _state.Club.FavouriteMovies.FirstOrDefault(m => m.Id == _selectedMovieId);
+        var location = _state.Club.GetLocation(locationId);
+
+        if (movie is null || location is null)
+        {
+            _message = "Invalid movie or location selection.";
+            _isError = true;
+            return;
+        }
+
+        _isCreating = true;
+        var now = DateTimeOffset.UtcNow;
+        var movieEvent = new MovieEvent
+        {
+            Id = Guid.NewGuid(),
+            Movie = movie,
+            EventDate = new DateTimeOffset(_eventDateTime),
+            Location = location,
+            InvitedFriendIds = [.. _selectedFriendIds],
+            InvitedGroupIds = [.. _selectedGroupIds],
+            Notes = string.IsNullOrWhiteSpace(_eventNotes) ? null : _eventNotes.Trim(),
+            Status = EventStatus.Scheduled,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        var result = await MovieEventService.CreateEventAsync(movieEvent, CancellationToken.None);
+        if (result.IsSuccess)
+        {
+            _state = await AppStateService.GetStateAsync(CancellationToken.None);
+            _message = "Event created successfully!";
+            _isError = false;
+            _showCreateForm = false;
+            ResetForm();
+        }
+        else
+        {
+            _message = result.Error ?? "Failed to create event.";
+            _isError = true;
+        }
+
+        _isCreating = false;
+    }
+
+    private async Task CancelEvent(Guid eventId)
+    {
+        var result = await MovieEventService.CancelEventAsync(eventId, CancellationToken.None);
+        if (result.IsSuccess)
+        {
+            _state = await AppStateService.GetStateAsync(CancellationToken.None);
+            _message = "Event cancelled.";
+            _isError = false;
+        }
+        else
+        {
+            _message = result.Error ?? "Failed to cancel event.";
+            _isError = true;
+        }
+    }
+
+    private void ResetForm()
+    {
+        _selectedMovieId = 0;
+        _selectedLocationId = "";
+        _eventDateTime = DateTime.Now.AddDays(1);
+        _eventNotes = "";
+        _selectedFriendIds = [];
+        _selectedGroupIds = [];
+    }
+}

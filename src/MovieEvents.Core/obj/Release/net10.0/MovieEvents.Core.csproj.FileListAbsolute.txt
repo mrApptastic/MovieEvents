@@ -1,0 +1,11 @@
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/bin/Release/net10.0/MovieEvents.Core.deps.json
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/bin/Release/net10.0/MovieEvents.Core.dll
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/bin/Release/net10.0/MovieEvents.Core.pdb
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/MovieEvents.Core.GeneratedMSBuildEditorConfig.editorconfig
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/MovieEvents.Core.AssemblyInfoInputs.cache
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/MovieEvents.Core.AssemblyInfo.cs
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/MovieEvents.Core.csproj.CoreCompileInputs.cache
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/MovieEvents.Core.dll
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/refint/MovieEvents.Core.dll
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/MovieEvents.Core.pdb
+/home/runner/work/MovieEvents/MovieEvents/src/MovieEvents.Core/obj/Release/net10.0/ref/MovieEvents.Core.dll

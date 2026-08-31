@@ -1,0 +1,150 @@
+@page "/groups"
+
+<PageTitle>Groups - MovieEvents</PageTitle>
+
+<h1><i class="bi bi-person-lines-fill"></i> Groups</h1>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">Create Group</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <input type="text" class="form-control" placeholder="Group name" @bind="_newGroupName" />
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-primary" @onclick="AddGroup">
+                    <i class="bi bi-plus-circle"></i> Create Group
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_state is not null)
+{
+    @foreach (var group in _state.Club.Groups)
+    {
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">@group.Name</h5>
+                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveGroup(group.Id)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <h6>Members:</h6>
+                @if (group.FriendIds.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        @foreach (var friendId in group.FriendIds)
+                        {
+                            var friend = _state.Club.GetFriend(friendId);
+                            if (friend is not null)
+                            {
+                                <span class="badge bg-primary d-flex align-items-center gap-1">
+                                    @friend.Name
+                                    <button type="button" class="btn-close btn-close-white btn-sm"
+                                            @onclick="() => RemoveFriendFromGroup(group, friendId)"></button>
+                                </span>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted small mb-2">No members yet.</p>
+                }
+
+                @{
+                    var availableFriends = _state.Club.Friends.Where(f => !group.FriendIds.Contains(f.Id)).ToList();
+                }
+                @if (availableFriends.Count > 0)
+                {
+                    <div class="input-group input-group-sm" style="max-width: 400px;">
+                        <select class="form-select" @bind="@_selectedFriendForGroup">
+                            <option value="">Select a friend...</option>
+                            @foreach (var friend in availableFriends)
+                            {
+                                <option value="@friend.Id">@friend.Name</option>
+                            }
+                        </select>
+                        <button class="btn btn-outline-primary" @onclick="() => AddFriendToGroup(group)">
+                            <i class="bi bi-person-plus"></i> Add
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_state.Club.Groups.Count == 0)
+    {
+        <p class="text-muted mt-3">No groups yet. Create one above!</p>
+    }
+}
+
+@code {
+    [Inject] private IAppStateService AppStateService { get; set; } = default!;
+
+    private AppState? _state;
+    private string _newGroupName = "";
+    private string _selectedFriendForGroup = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state = await AppStateService.GetStateAsync(CancellationToken.None);
+    }
+
+    private async Task AddGroup()
+    {
+        if (_state is null || string.IsNullOrWhiteSpace(_newGroupName)) return;
+
+        var group = new FriendGroup
+        {
+            Id = Guid.NewGuid(),
+            Name = _newGroupName.Trim(),
+            FriendIds = []
+        };
+
+        _state.Club.AddGroup(group);
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+        _newGroupName = "";
+    }
+
+    private async Task RemoveGroup(Guid groupId)
+    {
+        if (_state is null) return;
+        _state.Club.RemoveGroup(groupId);
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+    }
+
+    private async Task AddFriendToGroup(FriendGroup group)
+    {
+        if (string.IsNullOrEmpty(_selectedFriendForGroup) || !Guid.TryParse(_selectedFriendForGroup, out var friendId))
+            return;
+
+        if (!group.FriendIds.Contains(friendId))
+        {
+            group.FriendIds.Add(friendId);
+            await SaveState();
+        }
+
+        _selectedFriendForGroup = "";
+    }
+
+    private async Task RemoveFriendFromGroup(FriendGroup group, Guid friendId)
+    {
+        group.FriendIds.Remove(friendId);
+        await SaveState();
+    }
+
+    private async Task SaveState()
+    {
+        if (_state is not null)
+        {
+            await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+        }
+    }
+}

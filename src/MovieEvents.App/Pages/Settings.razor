@@ -1,0 +1,179 @@
+@page "/settings"
+
+<PageTitle>Settings - MovieEvents</PageTitle>
+
+<h1><i class="bi bi-gear"></i> Settings</h1>
+
+@if (_state is not null)
+{
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-person-circle"></i> Profile</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> @(_state.UserName ?? "Not signed in")</p>
+            <p><strong>Email:</strong> @(_state.UserEmail ?? "Not signed in")</p>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-palette"></i> Theme</h5>
+        </div>
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                <button class="btn @(_currentTheme == "light" ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="SetLightTheme">
+                    <i class="bi bi-sun"></i> Light
+                </button>
+                <button class="btn @(_currentTheme == "dark" ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="SetDarkTheme">
+                    <i class="bi bi-moon"></i> Dark
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-database"></i> Data Management</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-primary" @onclick="ExportData">
+                    <i class="bi bi-download"></i> Export to JSON
+                </button>
+                <label class="btn btn-outline-success mb-0">
+                    <i class="bi bi-upload"></i> Import from JSON
+                    <InputFile OnChange="ImportData" style="display: none;" accept=".json" />
+                </label>
+                <button class="btn btn-outline-info" @onclick="SendBackup" disabled="@_isSendingBackup">
+                    @if (_isSendingBackup)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                    }
+                    <i class="bi bi-envelope"></i> Send Backup to Gmail
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3 alert-dismissible fade show">
+            @_message
+            <button type="button" class="btn-close" @onclick="() => _message = null"></button>
+        </div>
+    }
+
+    <div class="card mt-3 border-danger">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Danger Zone</h5>
+        </div>
+        <div class="card-body">
+            <p>Clear all local data. This action cannot be undone.</p>
+            <button class="btn btn-danger" @onclick="ClearAllData">
+                <i class="bi bi-trash"></i> Clear All Data
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private IAppStateService AppStateService { get; set; } = default!;
+    [Inject] private IThemeService ThemeService { get; set; } = default!;
+    [Inject] private IGmailService GmailService { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
+    private AppState? _state;
+    private string _currentTheme = "light";
+    private string? _message;
+    private bool _isError;
+    private bool _isSendingBackup;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state = await AppStateService.GetStateAsync(CancellationToken.None);
+        _currentTheme = await ThemeService.GetThemeAsync(CancellationToken.None);
+    }
+
+    private async Task SetTheme(string theme)
+    {
+        _currentTheme = theme;
+        await ThemeService.SetThemeAsync(theme, CancellationToken.None);
+    }
+
+    private Task SetLightTheme() => SetTheme("light");
+    private Task SetDarkTheme() => SetTheme("dark");
+
+    private async Task ExportData()
+    {
+        var json = await AppStateService.ExportStateAsync(CancellationToken.None);
+        await JSRuntime.InvokeVoidAsync("downloadFile", "movieevents-backup.json", "application/json", json);
+        _message = "Data exported successfully!";
+        _isError = false;
+    }
+
+    private async Task ImportData(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+
+            var result = await AppStateService.ImportStateAsync(json, CancellationToken.None);
+            if (result.IsSuccess)
+            {
+                _state = await AppStateService.GetStateAsync(CancellationToken.None);
+                _message = "Data imported successfully!";
+                _isError = false;
+            }
+            else
+            {
+                _message = result.Error ?? "Import failed.";
+                _isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Import failed: {ex.Message}";
+            _isError = true;
+        }
+    }
+
+    private async Task SendBackup()
+    {
+        if (_state?.UserEmail is null)
+        {
+            _message = "You must be signed in to send a backup.";
+            _isError = true;
+            return;
+        }
+
+        _isSendingBackup = true;
+        var json = await AppStateService.ExportStateAsync(CancellationToken.None);
+        var result = await GmailService.SendBackupAsync(json, _state.UserEmail, CancellationToken.None);
+
+        if (result.IsSuccess)
+        {
+            _message = "Backup sent to your Gmail!";
+            _isError = false;
+        }
+        else
+        {
+            _message = result.Error ?? "Failed to send backup.";
+            _isError = true;
+        }
+
+        _isSendingBackup = false;
+    }
+
+    private async Task ClearAllData()
+    {
+        _state = AppState.Create();
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+        _message = "All data cleared.";
+        _isError = false;
+    }
+}
