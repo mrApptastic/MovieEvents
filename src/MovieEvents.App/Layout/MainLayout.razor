@@ -1,0 +1,38 @@
+﻿@inherits LayoutComponentBase
+@inject MovieEvents.Core.Interfaces.IThemeService ThemeService
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 d-flex justify-content-end align-items-center">
+            <button class="btn btn-outline-secondary btn-sm me-2" @onclick="ToggleTheme" title="Toggle theme">
+                <i class="bi @(_isDark ? "bi-sun" : "bi-moon")"></i>
+            </button>
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private bool _isDark;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var theme = await ThemeService.GetThemeAsync(CancellationToken.None);
+        _isDark = theme == "dark";
+    }
+
+    private async Task ToggleTheme()
+    {
+        _isDark = !_isDark;
+        var theme = _isDark ? "dark" : "light";
+        await ThemeService.SetThemeAsync(theme, CancellationToken.None);
+    }
+}

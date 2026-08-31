@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MovieEvents.App/MovieEvents.App.csproj" />
+    <Project Path="src/MovieEvents.Core/MovieEvents.Core.csproj" />
+    <Project Path="src/MovieEvents.Infrastructure/MovieEvents.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MovieEvents.App.Tests/MovieEvents.App.Tests.csproj" />
+    <Project Path="tests/MovieEvents.Core.Tests/MovieEvents.Core.Tests.csproj" />
+  </Folder>
+</Solution>

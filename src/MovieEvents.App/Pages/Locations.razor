@@ -1,0 +1,98 @@
+@page "/locations"
+
+<PageTitle>Locations - MovieEvents</PageTitle>
+
+<h1><i class="bi bi-geo-alt"></i> Locations</h1>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">Add Location</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Name" @bind="_newLocationName" />
+            </div>
+            <div class="col-md-5">
+                <input type="text" class="form-control" placeholder="Address" @bind="_newLocationAddress" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" @onclick="AddLocation">
+                    <i class="bi bi-geo-alt-fill"></i> Add Location
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_state is not null && _state.Club.Locations.Count > 0)
+{
+    <div class="table-responsive mt-3">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var location in _state.Club.Locations)
+                {
+                    <tr>
+                        <td>@location.Name</td>
+                        <td>@location.Address</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveLocation(location.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p class="text-muted mt-3">No locations yet. Add one above!</p>
+}
+
+@code {
+    [Inject] private IAppStateService AppStateService { get; set; } = default!;
+
+    private AppState? _state;
+    private string _newLocationName = "";
+    private string _newLocationAddress = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state = await AppStateService.GetStateAsync(CancellationToken.None);
+    }
+
+    private async Task AddLocation()
+    {
+        if (_state is null || string.IsNullOrWhiteSpace(_newLocationName) || string.IsNullOrWhiteSpace(_newLocationAddress))
+            return;
+
+        var location = new Location
+        {
+            Id = Guid.NewGuid(),
+            Name = _newLocationName.Trim(),
+            Address = _newLocationAddress.Trim()
+        };
+
+        _state.Club.AddLocation(location);
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+
+        _newLocationName = "";
+        _newLocationAddress = "";
+    }
+
+    private async Task RemoveLocation(Guid locationId)
+    {
+        if (_state is null) return;
+        _state.Club.RemoveLocation(locationId);
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+    }
+}

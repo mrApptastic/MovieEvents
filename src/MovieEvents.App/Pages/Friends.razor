@@ -1,0 +1,108 @@
+@page "/friends"
+
+<PageTitle>Friends - MovieEvents</PageTitle>
+
+<h1><i class="bi bi-people"></i> Friends</h1>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">Add Friend</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Name" @bind="_newFriendName" />
+            </div>
+            <div class="col-md-4">
+                <input type="email" class="form-control" placeholder="Email" @bind="_newFriendEmail" />
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary w-100" @onclick="AddFriend">
+                    <i class="bi bi-person-plus"></i> Add Friend
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_state is not null && _state.Club.Friends.Count > 0)
+{
+    <div class="table-responsive mt-3">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Groups</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var friend in _state.Club.Friends)
+                {
+                    <tr>
+                        <td>@friend.Name</td>
+                        <td>@friend.Email</td>
+                        <td>
+                            @{
+                                var groups = _state.Club.Groups.Where(g => g.FriendIds.Contains(friend.Id)).ToList();
+                            }
+                            @foreach (var group in groups)
+                            {
+                                <span class="badge bg-secondary me-1">@group.Name</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFriend(friend.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p class="text-muted mt-3">No friends yet. Add your first friend above!</p>
+}
+
+@code {
+    [Inject] private IAppStateService AppStateService { get; set; } = default!;
+
+    private AppState? _state;
+    private string _newFriendName = "";
+    private string _newFriendEmail = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state = await AppStateService.GetStateAsync(CancellationToken.None);
+    }
+
+    private async Task AddFriend()
+    {
+        if (_state is null || string.IsNullOrWhiteSpace(_newFriendName) || string.IsNullOrWhiteSpace(_newFriendEmail))
+            return;
+
+        var friend = new Friend
+        {
+            Id = Guid.NewGuid(),
+            Name = _newFriendName.Trim(),
+            Email = _newFriendEmail.Trim()
+        };
+
+        _state.Club.AddFriend(friend);
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+
+        _newFriendName = "";
+        _newFriendEmail = "";
+    }
+
+    private async Task RemoveFriend(Guid friendId)
+    {
+        if (_state is null) return;
+        _state.Club.RemoveFriend(friendId);
+        await AppStateService.SaveStateAsync(_state, CancellationToken.None);
+    }
+}
