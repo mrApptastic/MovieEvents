@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MovieEvents.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9fed7f438e4fcf6416a8ab63cd78906c0602078f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b4ae71467cef7e4f75b40447588bf768fbdf08e2")]
 [assembly: System.Reflection.AssemblyProductAttribute("MovieEvents.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MovieEvents.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

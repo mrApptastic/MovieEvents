@@ -1,0 +1,70 @@
+name: Build, Test and Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: dotnet publish src/MovieEvents.App/MovieEvents.App.csproj -c Release -o release
+
+      - name: Rewrite base href
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: sed -i 's|<base href="/" />|<base href="/MovieEvents/" />|g' release/wwwroot/index.html
+
+      - name: Add .nojekyll
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: touch release/wwwroot/.nojekyll
+
+      - name: Copy index.html to 404.html
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
